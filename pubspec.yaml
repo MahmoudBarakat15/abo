@@ -1,0 +1,150 @@
+name: alhouini_library
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # واجهة المستخدم
+  cupertino_icons: ^1.0.8
+  curved_navigation_bar: ^1.0.6
+  carousel_slider: ^5.1.1
+  google_fonts: ^6.2.1
+  flutter_staggered_grid_view: ^0.7.0
+  page_transition: ^2.0.9
+  lottie: ^3.1.2
+
+  # الصوت والفيديو
+  audioplayers: ^6.5.0
+  video_player: ^2.9.2
+  chewie: ^1.8.1
+  youtube_player_flutter: ^9.1.2
+
+  # الشبكات والملفات
+  dio: ^5.9.0
+  http: ^1.5.0
+  path_provider: ^2.1.5
+  shared_preferences: ^2.3.3
+  permission_handler: ^12.0.1
+
+  # الإشعارات
+  flutter_local_notifications: ^19.4.1
+
+  # PDF
+  pdfx: ^2.6.0
+
+  # إدارة الحالة
+  provider: ^6.1.2
+
+  # أدوات إضافية
+  url_launcher: ^6.3.1
+  flutter_inappwebview: ^6.1.5
+
+  # 🔥 إضافات مقترحة لتحسين صفحة المقالات
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.1
+  share_plus: ^10.1.1
+  connectivity_plus: ^6.0.5
+  flutter_animate: ^4.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/logo.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/22.jpg
+    - assets/23.png
+    - assets/24.png
+    - assets/25.png
+    - assets/26.jpg
+    - assets/27.png
+    - assets/28.png
+    - assets/29.png
+    - assets/30.png
+    - assets/40.jpg
+    - assets/41.jpg
+    - assets/42.jpg
+    - assets/43.jpg
+    - assets/44.jpg
+    - assets/45.jpg
+    - assets/46.jpg
+    - assets/47.jpg
+    - assets/48.jpg
+    - assets/49.jpg
+    - assets/50.jpg
+    - assets/51.jpg
+    - assets/52.jpg
+    - assets/53.jpg
+    - assets/54.jpg
+    - assets/55.png
+    - assets/56.png
+    - assets/57.png
+    - assets/58.png
+    - assets/59.png
+    - assets/60.png
+    - assets/61.png
+    - assets/62.png
+    - assets/63.png
+    - assets/64.png
+    - assets/65.png
+    - assets/66.png
+    - assets/67.png
+    - assets/68.png
+    - assets/69.png
+    - assets/70.png
+    - assets/71.png
+    - assets/72.png
+    - assets/73.jpg
+    - assets/80.jpg
+    - assets/5.jpg
+    - assets/300.png
+    - assets/301.png
+    - assets/audio/welcome.mp3
+    - assets/audio_cover.jpg
+
+  fonts:
+    - family: IBM Plex Arabic
+      fonts:
+        - asset: assets/fonts/IBMPlexSansArabic-Regular.ttf
+        - asset: assets/fonts/IBMPlexSansArabic-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/IBMPlexSansArabic-Light.ttf
+          weight: 300
+        - asset: assets/fonts/IBMPlexSansArabic-ExtraLight.ttf
+          weight: 200
+        - asset: assets/fonts/IBMPlexSansArabic-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/IBMPlexSansArabic-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/IBMPlexSansArabic-Thin.ttf
+          weight: 100
+    - family: Cairo
+      fonts:
+        - asset: assets/fonts/Cairo-Regular.ttf
+        - asset: assets/fonts/Cairo-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Cairo-Light.ttf
+          weight: 300
+        - asset: assets/fonts/Cairo-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Cairo-SemiBold.ttf
+          weight: 600
+        - asset: assets/fonts/Cairo-Black.ttf
+          weight: 900
