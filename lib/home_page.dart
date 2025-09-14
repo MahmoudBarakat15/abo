@@ -73,14 +73,16 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage>
-    with TickerProviderStateMixin, WidgetsBindingObserver {
+    with TickerProviderStateMixin, WidgetsBindingObserver, RouteAware {
   late final AudioPlayer _audioPlayer;
   late final AnimationController _floatingController;
   late final AnimationController _pulseController;
   late final Animation<double> _floatingAnimation;
   late final Animation<double> _pulseAnimation;
 
-  bool isAudioPlaying = true;
+  bool isAudioPlaying = false;
+  bool _isHomePageActive = false;
+  bool _shouldPlayAudio = true;
   DateTime? lastBackPressTime;
   int currentIndex = 0;
 
@@ -183,18 +185,66 @@ class _HomePageState extends State<HomePage>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
-    _playWelcomeAudio();
+    // تأخير بسيط لضمان بناء الصفحة كاملة قبل تشغيل الصوت
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _isHomePageActive = true;
+      if (_shouldPlayAudio) {
+        _playWelcomeAudio();
+      }
+    });
   }
 
   Future<void> _playWelcomeAudio() async {
+    // التأكد من أن الصفحة الرئيسية نشطة ومركبة
+    if (!mounted || !_isHomePageActive || !_shouldPlayAudio) {
+      debugPrint(
+        'لا يمكن تشغيل الصوت: mounted=$mounted, _isHomePageActive=$_isHomePageActive, _shouldPlayAudio=$_shouldPlayAudio',
+      );
+      return;
+    }
+
     try {
+      debugPrint('محاولة تشغيل الصوت الترحيبي...');
+
+      // التأكد من إيقاف أي صوت سابق
+      await _audioPlayer.stop();
+
+      // تجربة تشغيل الصوت بطرق مختلفة
       await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      await _audioPlayer.play(AssetSource('audio/welcome.mp3'), volume: 0.03);
-      if (mounted) {
+
+      // جرب أولاً بدون volume
+      await _audioPlayer.play(AssetSource('audio/welcome.mp3'));
+
+      // ثم اضبط الصوت
+      await _audioPlayer.setVolume(0.3);
+
+      debugPrint('تم تشغيل الصوت الترحيبي بنجاح');
+
+      if (mounted && _isHomePageActive) {
         setState(() => isAudioPlaying = true);
       }
     } catch (e) {
       debugPrint('خطأ في تشغيل الصوت الترحيبي: $e');
+
+      // جرب طريقة بديلة
+      try {
+        debugPrint('محاولة طريقة بديلة لتشغيل الصوت...');
+        await _audioPlayer.setSource(AssetSource('audio/welcome.mp3'));
+        await _audioPlayer.setVolume(0.3);
+        await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        await _audioPlayer.resume();
+
+        if (mounted && _isHomePageActive) {
+          setState(() => isAudioPlaying = true);
+        }
+        debugPrint('تم تشغيل الصوت بالطريقة البديلة');
+      } catch (e2) {
+        debugPrint('فشل في تشغيل الصوت بالطريقة البديلة: $e2');
+
+        // تحقق من وجود الملف
+        debugPrint('تأكد من وجود الملف: assets/audio/welcome.mp3');
+        debugPrint('تأكد من إضافة الملف في pubspec.yaml تحت assets:');
+      }
     }
   }
 
@@ -211,25 +261,63 @@ class _HomePageState extends State<HomePage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      _stopWelcomeAudio();
-    } else if (state == AppLifecycleState.resumed) {
-      _playWelcomeAudio();
+    if (!mounted || !_isHomePageActive) return;
+
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.inactive:
+        _stopWelcomeAudio();
+        break;
+      case AppLifecycleState.resumed:
+        // التحقق من أن الصفحة ما زالت نشطة قبل إعادة التشغيل
+        if (_shouldPlayAudio && _isHomePageActive) {
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _isHomePageActive) {
+              _playWelcomeAudio();
+            }
+          });
+        }
+        break;
+      default:
+        break;
     }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+
+    // التحقق من أن الصفحة الحالية هي صفحة الـ Home فقط
     final route = ModalRoute.of(context);
-    if (route != null && route.isCurrent && !isAudioPlaying) {
-      _playWelcomeAudio();
+    if (route != null && route.isCurrent && mounted) {
+      // التأكد من أن هذه هي صفحة الـ Home وليس صفحة أخرى
+      if (route.settings.name == null || route.settings.name == '/') {
+        if (!_isHomePageActive) {
+          _isHomePageActive = true;
+        }
+        if (_shouldPlayAudio && !isAudioPlaying) {
+          Future.delayed(const Duration(milliseconds: 300), () {
+            if (mounted && _isHomePageActive) {
+              _playWelcomeAudio();
+            }
+          });
+        }
+      }
     }
+  }
+
+  // دالة لإيقاف الصوت إجبارياً من الخارج
+  void _forceStopAudio() {
+    _isHomePageActive = false;
+    _shouldPlayAudio = false;
+    _stopWelcomeAudio();
   }
 
   @override
   void dispose() {
+    _isHomePageActive = false;
     WidgetsBinding.instance.removeObserver(this);
+    _stopWelcomeAudio();
     _audioPlayer.dispose();
     _floatingController.dispose();
     _pulseController.dispose();
@@ -240,6 +328,8 @@ class _HomePageState extends State<HomePage>
     // تأثير haptic feedback
     HapticFeedback.lightImpact();
 
+    // إيقاف الصوت الترحيبي وتعيين حالة الصفحة كغير نشطة
+    _isHomePageActive = false;
     await _stopWelcomeAudio();
 
     // خريطة للصفحات لتجنب if-else الطويلة
@@ -283,9 +373,17 @@ class _HomePageState extends State<HomePage>
         ),
       );
 
-      // إعادة تشغيل الصوت عند العودة
-      if (isAudioPlaying) {
-        _playWelcomeAudio();
+      // عند العودة للصفحة الرئيسية، إعادة تفعيل حالة الصفحة
+      if (mounted) {
+        _isHomePageActive = true;
+        if (_shouldPlayAudio) {
+          // تأخير قصير للتأكد من أن الصفحة عادت بالكامل
+          Future.delayed(const Duration(milliseconds: 500), () {
+            if (mounted && _isHomePageActive) {
+              _playWelcomeAudio();
+            }
+          });
+        }
       }
     }
   }
@@ -419,7 +517,15 @@ class _HomePageState extends State<HomePage>
                 ),
                 onPressed: () {
                   HapticFeedback.lightImpact();
-                  isAudioPlaying ? _stopWelcomeAudio() : _playWelcomeAudio();
+                  if (isAudioPlaying) {
+                    _shouldPlayAudio = false;
+                    _stopWelcomeAudio();
+                  } else {
+                    _shouldPlayAudio = true;
+                    if (_isHomePageActive) {
+                      _playWelcomeAudio();
+                    }
+                  }
                 },
               ),
             ),

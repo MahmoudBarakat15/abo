@@ -118,6 +118,7 @@ flutter:
     - assets/301.png
     - assets/audio/welcome.mp3
     - assets/audio_cover.jpg
+    - assets/data/fatawa.json
 
   fonts:
     - family: IBM Plex Arabic

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:dio/dio.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
@@ -441,23 +440,37 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      backgroundColor: const Color(0xFF0A0A0A),
-      appBar: _buildPremiumAppBar(),
-      body: Stack(
-        children: [
-          if (_playingVideo == null) ...[
-            _buildBody(),
-            _buildDownloadOverlay(),
-          ] else ...[
-            _buildInPagePlayer(),
+    return WillPopScope(
+      onWillPop: () async {
+        if (_playingVideo != null) {
+          // إذا كان الفيديو يُعرض، أوقفه ولا تُغلق الصفحة
+          setState(() {
+            _playingVideo = null;
+          });
+          _disposePlayer();
+          return false; // لا تُغلق الصفحة
+        }
+        // إذا لم يكن الفيديو يُعرض، ارجع للصفحة السابقة
+        return true;
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        backgroundColor: const Color(0xFF0A0A0A),
+        appBar: _buildPremiumAppBar(),
+        body: Stack(
+          children: [
+            if (_playingVideo == null) ...[
+              _buildBody(),
+              _buildDownloadOverlay(),
+            ] else ...[
+              _buildInPagePlayer(),
+            ],
           ],
-        ],
+        ),
+        floatingActionButton: _playingVideo == null
+            ? _buildFloatingActionButton()
+            : null,
       ),
-      floatingActionButton: _playingVideo == null
-          ? _buildFloatingActionButton()
-          : null,
     );
   }
 
@@ -494,36 +507,34 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
         ),
       ),
       centerTitle: true,
-      leading: _playingVideo == null
-          ? Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            )
-          : Container(
-              margin: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.1)),
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.close_rounded, color: Colors.white),
-                onPressed: () {
-                  setState(() {
-                    _playingVideo = null;
-                  });
-                  _disposePlayer();
-                },
-              ),
-            ),
+      leading: Container(
+        margin: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.1)),
+        ),
+        child: IconButton(
+          icon: Icon(
+            _playingVideo != null
+                ? Icons.close_rounded
+                : Icons.arrow_back_rounded,
+            color: Colors.white,
+          ),
+          onPressed: () {
+            if (_playingVideo != null) {
+              // فقط أوقف الفيديو، لا تغلق الصفحة
+              setState(() {
+                _playingVideo = null;
+              });
+              _disposePlayer();
+            } else {
+              // ارجع للصفحة السابقة
+              Navigator.maybePop(context); // ⬅️ استخدام maybePop آمن
+            }
+          },
+        ),
+      ),
       actions: [
         if (_playingVideo == null)
           Container(

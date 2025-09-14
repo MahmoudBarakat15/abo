@@ -3,22 +3,14 @@ import 'package:flutter/services.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'home_page.dart';
-import 'pages/bio_page.dart';
-import 'pages/support_page.dart'; // صفحة الدعم
-import 'pages/developer_message_page.dart'; // صفحة رسالة المطور
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // إعداد شريط الحالة وشريط التنقل
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
-
   runApp(const MyApp());
 }
 
-// كلاس الألوان والثيمات الراقية
 class AppThemes {
-  // ألوان الثيم النهاري الراقي
   static const Color lightPrimary = Color(0xFF1A237E);
   static const Color lightSecondary = Color(0xFF3F51B5);
   static const Color lightAccent = Color(0xFFFFD700);
@@ -34,7 +26,6 @@ class AppThemes {
     Color(0xFFBBDEFB),
   ];
 
-  // ألوان الثيم الليلي الراقي
   static const Color darkPrimary = Color(0xFF0A0E27);
   static const Color darkSecondary = Color(0xFF1A1F3A);
   static const Color darkAccent = Color(0xFFFFD700);
@@ -50,12 +41,10 @@ class AppThemes {
     Color(0xFF1A237E),
   ];
 
-  // الثيم النهاري
   static ThemeData get lightTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.light,
     fontFamily: GoogleFonts.cairo().fontFamily,
-
     colorScheme: const ColorScheme(
       brightness: Brightness.light,
       primary: lightPrimary,
@@ -67,9 +56,7 @@ class AppThemes {
       error: Color(0xFFD32F2F),
       onError: lightOnPrimary,
     ),
-
     scaffoldBackgroundColor: Colors.transparent,
-
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -87,7 +74,6 @@ class AppThemes {
       ),
       iconTheme: const IconThemeData(color: lightPrimary),
     ),
-
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: lightPrimary,
@@ -98,26 +84,22 @@ class AppThemes {
         shadowColor: lightPrimary.withOpacity(0.3),
       ),
     ),
-
     cardTheme: CardThemeData(
       elevation: 12,
       shadowColor: lightPrimary.withOpacity(0.2),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       color: lightSurface,
     ),
-
     textTheme: GoogleFonts.cairoTextTheme().apply(
       bodyColor: lightOnSurface,
       displayColor: lightPrimary,
     ),
   );
 
-  // الثيم الليلي
   static ThemeData get darkTheme => ThemeData(
     useMaterial3: true,
     brightness: Brightness.dark,
     fontFamily: GoogleFonts.cairo().fontFamily,
-
     colorScheme: const ColorScheme(
       brightness: Brightness.dark,
       primary: darkAccent,
@@ -129,9 +111,7 @@ class AppThemes {
       error: Color(0xFFCF6679),
       onError: Color(0xFF000000),
     ),
-
     scaffoldBackgroundColor: Colors.transparent,
-
     appBarTheme: AppBarTheme(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -149,7 +129,6 @@ class AppThemes {
       ),
       iconTheme: const IconThemeData(color: darkAccent),
     ),
-
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: darkAccent,
@@ -160,14 +139,12 @@ class AppThemes {
         shadowColor: darkAccent.withOpacity(0.4),
       ),
     ),
-
     cardTheme: CardThemeData(
       elevation: 12,
       shadowColor: darkAccent.withOpacity(0.3),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       color: darkSurface,
     ),
-
     textTheme: GoogleFonts.cairoTextTheme().apply(
       bodyColor: darkOnSurface,
       displayColor: darkAccent,
@@ -242,7 +219,6 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   }
 }
 
-// صفحة عامة تحتوي على شريط التنقل العالمي
 class GlobalScaffold extends StatefulWidget {
   final bool isDarkMode;
   final VoidCallback onToggleTheme;
@@ -259,7 +235,7 @@ class GlobalScaffold extends StatefulWidget {
 
 class _GlobalScaffoldState extends State<GlobalScaffold>
     with TickerProviderStateMixin {
-  int selectedIndex = 1; // البداية من الصفحة الرئيسية
+  int selectedIndex = 1;
   Widget? currentPage;
   late AnimationController _navAnimationController;
   late Animation<double> _navAnimation;
@@ -267,16 +243,13 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
   @override
   void initState() {
     super.initState();
-
     _navAnimationController = AnimationController(
       duration: const Duration(milliseconds: 300),
       vsync: this,
     );
-
     _navAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _navAnimationController, curve: Curves.easeInOut),
     );
-
     _navAnimationController.forward();
   }
 
@@ -286,15 +259,14 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
     super.dispose();
   }
 
-  // قائمة الصفحات
   List<Widget> get pages => [
-    SupportPage(isDarkMode: widget.isDarkMode), // صفحة الدعم
+    SupportPage(isDarkMode: widget.isDarkMode),
     HomePage(
       isDarkMode: widget.isDarkMode,
       onToggleTheme: widget.onToggleTheme,
       onOpenPage: _openPage,
-    ), // الصفحة الرئيسية
-    DeveloperMessagePage(isDarkMode: widget.isDarkMode), // صفحة رسالة المطور
+    ),
+    DeveloperMessagePage(isDarkMode: widget.isDarkMode),
   ];
 
   void _openPage(Widget page) {
@@ -307,9 +279,8 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
     HapticFeedback.lightImpact();
     setState(() {
       selectedIndex = index;
-      currentPage = null; // العودة للصفحات الأساسية
+      currentPage = null;
     });
-
     _navAnimationController.reset();
     _navAnimationController.forward();
   }
@@ -409,7 +380,7 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
-            color: isSelected ? Colors.transparent : Colors.transparent,
+            color: Colors.transparent,
           ),
           child: Icon(icon, color: color, size: isSelected ? 28 : 24),
         ),
@@ -429,22 +400,16 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      extendBody: true, // يمتد المحتوى خلف شريط التنقل
-      extendBodyBehindAppBar: true, // يمتد المحتوى خلف شريط التطبيق
+      extendBody: true,
+      extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // الخلفية المتدرجة
           Positioned.fill(child: _buildGradientBackground()),
-
-          // المحتوى الرئيسي مع padding للشاشات المختلفة
           SafeArea(
-            bottom:
-                false, // عدم إضافة padding سفلي لأننا نتعامل مع الشريط بشكل منفصل
+            bottom: false,
             child: Padding(
               padding: EdgeInsets.only(
-                bottom:
-                    MediaQuery.of(context).padding.bottom +
-                    100, // مساحة لشريط التنقل
+                bottom: MediaQuery.of(context).padding.bottom + 100,
               ),
               child: currentPage ?? pages[selectedIndex],
             ),
@@ -456,7 +421,6 @@ class _GlobalScaffoldState extends State<GlobalScaffold>
   }
 }
 
-// صفحة الدعم (مثال)
 class SupportPage extends StatelessWidget {
   final bool isDarkMode;
 
@@ -537,7 +501,6 @@ class SupportPage extends StatelessWidget {
   }
 }
 
-// صفحة رسالة المطور (مثال)
 class DeveloperMessagePage extends StatelessWidget {
   final bool isDarkMode;
 

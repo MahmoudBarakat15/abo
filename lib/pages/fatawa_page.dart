@@ -1,398 +1,369 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'fatwa_detail_page.dart'; // استيراد صفحة تفاصيل الفتوى
+import 'fatwa_detail_page.dart';
 
-// صفحة الفتاوى الرئيسية
-class FatawaPage extends StatelessWidget {
-  FatawaPage({super.key});
+class FatawaPage extends StatefulWidget {
+  const FatawaPage({super.key});
 
-  final List<Map<String, dynamic>> fatawa = [
-    {
-      "title": "حكم صيام يوم الجمعة منفرداً",
-      "id": "siam_jumua",
-      "question": "ما حكم صيام يوم الجمعة منفرداً؟",
-      "answer":
-          "يُكره صيام يوم الجمعة منفرداً، وذلك لما ثبت في الصحيحين من حديث أبي هريرة رضي الله عنه أن النبي صلى الله عليه وسلم قال: \"لا تصوموا يوم الجمعة إلا أن تصوموا يوماً قبله أو يوماً بعده\". والحكمة من ذلك أن يوم الجمعة يوم عيد للمسلمين، فلا يُستحب إفراده بالصيام.",
-    },
-    {
-      "title": "الوضوء من لحم الجمل",
-      "id": "wudu_jamal",
-      "question": "هل يجب الوضوء من أكل لحم الجمل؟",
-      "answer":
-          "نعم، يجب الوضوء من أكل لحم الإبل، وذلك لما ثبت في صحيح مسلم من حديث جابر بن سمرة رضي الله عنه أن رجلاً سأل النبي صلى الله عليه وسلم: \"أتوضأ من لحوم الإبل؟\" قال: \"نعم\". وهذا الحكم خاص بلحم الإبل دون غيره من اللحوم.",
-    },
-    {
-      "title": "حكم التصوير الفوتوغرافي",
-      "id": "tasweer_photo",
-      "question": "ما حكم التصوير الفوتوغرافي للأشخاص؟",
-      "answer":
-          "اختلف العلماء المعاصرون في حكم التصوير الفوتوغرافي، والراجح أنه جائز للحاجة والمصلحة، كالهوية الشخصية والجواز ونحوها، وذلك لأن التصوير الفوتوغرافي مجرد حبس للظل وليس خلقاً مضاهياً لخلق الله، بخلاف النحت والرسم باليد.",
-    },
-    {
-      "title": "صلاة المرأة في البيت أفضل",
-      "id": "salat_marae_bayt",
-      "question": "هل صلاة المرأة في البيت أفضل أم في المسجد؟",
-      "answer":
-          "صلاة المرأة في بيتها أفضل من صلاتها في المسجد، لقول النبي صلى الله عليه وسلم: \"وبيوتهن خير لهن\"، ولكن إذا خرجت للمسجد بضوابطه الشرعية فلا حرج عليها، بل لها أجر الصلاة في المسجد مع الجماعة.",
-    },
-    {
-      "title": "حكم الاستماع للموسيقى",
-      "id": "istimaa_musiqa",
-      "question": "ما حكم الاستماع للموسيقى والأغاني؟",
-      "answer":
-          "الموسيقى والأغاني محرمة في الإسلام، لقول النبي صلى الله عليه وسلم: \"ليكونن من أمتي أقوام يستحلون الحر والحرير والخمر والمعازف\"، والمعازف هي آلات الموسيقى. أما الدف فيجوز في الأعياد والأفراح للنساء.",
-    },
-    {
-      "title": "زكاة الذهب والفضة",
-      "id": "zakat_zahab",
-      "question": "كيف تُحسب زكاة الذهب والفضة؟",
-      "answer":
-          "زكاة الذهب والفضة تجب إذا بلغت النصاب وحال عليها الحول. نصاب الذهب 85 جراماً، ونصاب الفضة 595 جراماً. والزكاة فيهما ربع العشر (2.5%). ويُزكى ذهب المرأة إذا بلغ النصاب حتى لو كان للزينة على الراجح من أقوال أهل العلم.",
-    },
-    {
-      "title": "حكم صلاة الجمعة للمسافر",
-      "id": "jumua_musafir",
-      "question": "هل تجب صلاة الجمعة على المسافر؟",
-      "answer":
-          "لا تجب صلاة الجمعة على المسافر، بل يصلي ظهراً أربع ركعات قصراً إن كان في سفر قصر. لكن إن حضرها مع الناس أجزأته وحصل على فضل الجمعة. والمسافر له رخص كثيرة منها القصر والفطر في رمضان وترك الجمعة.",
-    },
-    {
-      "title": "آداب دخول المسجد",
-      "id": "adab_masjid",
-      "question": "ما هي آداب دخول المسجد؟",
-      "answer":
-          "من آداب دخول المسجد: الوضوء، والدخول بالقدم اليمنى، وقول دعاء الدخول، وصلاة تحية المسجد، وعدم رفع الصوت، واجتناب الروائح الكريهة، والخروج بالقدم اليسرى مع دعاء الخروج. كما يُستحب التبكير للصلاة والجلوس في الصف الأول.",
-    },
-  ];
+  @override
+  State<FatawaPage> createState() => _FatawaPageState();
+}
+
+class _FatawaPageState extends State<FatawaPage> with TickerProviderStateMixin {
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _slideAnimation;
+
+  List<Map<String, dynamic>> fatawa = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadFatawa();
+
+    _animationController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeOut),
+    );
+
+    _slideAnimation = Tween<double>(begin: 30.0, end: 0.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.elasticOut),
+    );
+  }
+
+  Future<void> _loadFatawa() async {
+    final String response = await rootBundle.loadString(
+      'assets/data/fatawa.json',
+    );
+    final data = json.decode(response);
+    setState(() {
+      fatawa = List<Map<String, dynamic>>.from(data);
+      isLoading = false;
+    });
+    _animationController.forward();
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
+  }
+
+  // تحويل اللون من نص Hex
+  Color parseColor(String hexColor) {
+    hexColor = hexColor.replaceAll("#", "");
+    return Color(int.parse("0xFF$hexColor"));
+  }
+
+  // تحويل النص لأيقونة
+  IconData parseIcon(String iconName) {
+    switch (iconName) {
+      case "book_outlined":
+        return Icons.book_outlined;
+      case "water_drop_outlined":
+        return Icons.water_drop_outlined;
+      case "camera_alt_outlined":
+        return Icons.camera_alt_outlined;
+      case "home_outlined":
+        return Icons.home_outlined;
+      case "music_off_outlined":
+        return Icons.music_off_outlined;
+      case "monetization_on_outlined":
+        return Icons.monetization_on_outlined;
+      case "flight_outlined":
+        return Icons.flight_outlined;
+      case "mosque_outlined":
+        return Icons.mosque_outlined;
+      default:
+        return Icons.quiz_outlined;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
             colors: [
-              Color(0xFF6A4C93), // بنفسجي داكن
-              Color(0xFF8E6CB8), // بنفسجي متوسط
-              Color(0xFFA68CC7), // بنفسجي فاتح
-              Color(0xFFB8A9D1), // لافندر
+              Color(0xFF6A4C93),
+              Color(0xFF8E6CB8),
+              Color(0xFFA68CC7),
+              Color(0xFFB8A9D1),
             ],
             stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
-        child: Column(
-          children: [
-            // App Bar مخصص
-            Container(
-              padding: EdgeInsets.only(
-                top: MediaQuery.of(context).padding.top + 15,
-                left: 20,
-                right: 20,
-                bottom: 25,
-              ),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.black.withOpacity(0.4), Colors.transparent],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              child: Row(
-                textDirection: TextDirection.rtl,
-                children: [
-                  Container(
-                    padding: EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.25),
-                          Colors.white.withOpacity(0.15),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.3),
-                        width: 1.5,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.1),
-                          blurRadius: 10,
-                          offset: Offset(0, 5),
-                        ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.menu_book_rounded,
-                      color: Colors.white,
-                      size: 26,
-                    ),
-                  ),
-                  SizedBox(width: 18),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          "الفتاوى الشرعية",
-                          style: GoogleFonts.cairo(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black26,
-                                offset: Offset(0, 2),
-                                blurRadius: 4,
-                              ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              // الـ App Bar
+              AnimatedBuilder(
+                animation: _fadeAnimation,
+                builder: (context, child) {
+                  return Transform.translate(
+                    offset: Offset(0, _slideAnimation.value),
+                    child: Opacity(
+                      opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                      child: Container(
+                        margin: const EdgeInsets.all(20),
+                        padding: const EdgeInsets.all(25),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              Colors.white.withOpacity(0.25),
+                              Colors.white.withOpacity(0.1),
                             ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
                           ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          "أسئلة وأجوبة في أمور الدين",
-                          style: GoogleFonts.cairo(
-                            fontSize: 14,
-                            color: Colors.white.withOpacity(0.85),
-                            fontWeight: FontWeight.w500,
+                          borderRadius: BorderRadius.circular(30),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.3),
+                            width: 1.5,
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Container(
-                    padding: EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                        width: 1,
-                      ),
-                    ),
-                    child: InkWell(
-                      onTap: () => Navigator.pop(context),
-                      child: Icon(
-                        Icons.arrow_forward_ios_rounded,
-                        color: Colors.white,
-                        size: 20,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // قائمة الفتاوى
-            Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                itemCount: fatawa.length,
-                separatorBuilder: (_, __) => SizedBox(height: 18),
-                itemBuilder: (context, index) {
-                  final fatwa = fatawa[index];
-
-                  return Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(25),
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.white.withOpacity(0.20),
-                          Colors.white.withOpacity(0.08),
-                        ],
-                        begin: Alignment.topRight,
-                        end: Alignment.bottomLeft,
-                      ),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                        width: 1.2,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.15),
-                          blurRadius: 20,
-                          offset: Offset(0, 10),
-                          spreadRadius: -5,
-                        ),
-                        BoxShadow(
-                          color: Colors.white.withOpacity(0.1),
-                          blurRadius: 5,
-                          offset: Offset(0, -2),
-                          spreadRadius: 0,
-                        ),
-                      ],
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(25),
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            PageRouteBuilder(
-                              pageBuilder:
-                                  (context, animation, secondaryAnimation) =>
-                                      FatwaDetailPage(
-                                        title: fatwa["title"],
-                                        question: fatwa["question"],
-                                        answer: fatwa["answer"],
-                                      ),
-                              transitionsBuilder:
-                                  (
-                                    context,
-                                    animation,
-                                    secondaryAnimation,
-                                    child,
-                                  ) {
-                                    const begin = Offset(1.0, 0.0);
-                                    const end = Offset.zero;
-                                    const curve = Curves.easeInOutCubic;
-
-                                    var tween = Tween(
-                                      begin: begin,
-                                      end: end,
-                                    ).chain(CurveTween(curve: curve));
-
-                                    return SlideTransition(
-                                      position: animation.drive(tween),
-                                      child: child,
-                                    );
-                                  },
-                              transitionDuration: Duration(milliseconds: 400),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.1),
+                              blurRadius: 20,
+                              offset: const Offset(0, 10),
                             ),
-                          );
-                        },
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Row(
-                            textDirection: TextDirection.rtl,
-                            children: [
-                              // أيقونة الفتوى
-                              Container(
-                                width: 55,
-                                height: 55,
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Color(0xFFFFB3D9),
-                                      Color(0xFFFF8CC8),
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(18),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Color(0xFFFF8CC8).withOpacity(0.4),
-                                      blurRadius: 12,
-                                      offset: Offset(0, 6),
-                                    ),
+                          ],
+                        ),
+                        child: Row(
+                          textDirection: TextDirection.rtl,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [
+                                    Color(0xFFFFD700),
+                                    Color(0xFFFF8C00),
                                   ],
                                 ),
-                                child: Icon(
-                                  Icons.quiz_outlined,
-                                  color: Colors.white,
-                                  size: 28,
-                                ),
-                              ),
-
-                              SizedBox(width: 18),
-
-                              // محتوى الفتوى
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Text(
-                                      fatwa["title"],
-                                      style: GoogleFonts.cairo(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.white,
-                                        height: 1.5,
-                                      ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                    SizedBox(height: 12),
-                                    Container(
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: 14,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Color(0xFFFFB3D9).withOpacity(0.25),
-                                            Color(0xFFFF8CC8).withOpacity(0.15),
-                                          ],
-                                        ),
-                                        borderRadius: BorderRadius.circular(15),
-                                        border: Border.all(
-                                          color: Color(
-                                            0xFFFFB3D9,
-                                          ).withOpacity(0.4),
-                                          width: 1,
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        textDirection: TextDirection.rtl,
-                                        children: [
-                                          Icon(
-                                            Icons.help_outline_rounded,
-                                            size: 16,
-                                            color: Color(0xFFFFB3D9),
-                                          ),
-                                          SizedBox(width: 6),
-                                          Text(
-                                            "اضغط للقراءة",
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: Color(0xFFFFB3D9),
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-
-                              SizedBox(width: 12),
-
-                              // سهم الانتقال
-                              Container(
-                                padding: EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.white.withOpacity(0.2),
-                                      Colors.white.withOpacity(0.1),
-                                    ],
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.orange.withOpacity(0.3),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 4),
                                   ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.menu_book_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            const SizedBox(width: 20),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    "الفتاوى الشرعية",
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    "سؤال وجواب",
+                                    style: GoogleFonts.cairo(
+                                      fontSize: 15,
+                                      color: Colors.white.withOpacity(0.9),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: () => Navigator.pop(context),
+                              child: Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.2),
-                                    width: 1,
-                                  ),
                                 ),
-                                child: Icon(
-                                  Icons.arrow_back_ios_rounded,
-                                  color: Colors.white.withOpacity(0.8),
-                                  size: 18,
+                                child: const Icon(
+                                  Icons.arrow_forward_ios_rounded,
+                                  color: Colors.white,
+                                  size: 22,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   );
                 },
               ),
-            ),
-          ],
+
+              // لو لسه بيحمل
+              if (isLoading)
+                const Expanded(
+                  child: Center(
+                    child: CircularProgressIndicator(color: Colors.white),
+                  ),
+                )
+              else
+                // القائمة
+                Expanded(
+                  child: AnimatedBuilder(
+                    animation: _fadeAnimation,
+                    builder: (context, child) {
+                      return Opacity(
+                        opacity: _fadeAnimation.value.clamp(0.0, 1.0),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          itemCount: fatawa.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 18),
+                          itemBuilder: (context, index) {
+                            final fatwa = fatawa[index];
+                            final color = parseColor(fatwa["color"]);
+                            final icon = parseIcon(fatwa["icon"]);
+
+                            return Hero(
+                              tag: "fatwa_${fatwa['id']}",
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(25),
+                                  onTap: () {
+                                    HapticFeedback.mediumImpact();
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => FatwaDetailPage(
+                                          title: fatwa["title"],
+                                          question: fatwa["question"],
+                                          answer: fatwa["answer"],
+                                          color: color,
+                                          heroTag: "fatwa_${fatwa['id']}",
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.all(24),
+                                    decoration: BoxDecoration(
+                                      gradient: LinearGradient(
+                                        colors: [
+                                          Colors.white.withOpacity(0.25),
+                                          Colors.white.withOpacity(0.1),
+                                        ],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ),
+                                      borderRadius: BorderRadius.circular(25),
+                                      border: Border.all(
+                                        color: Colors.white.withOpacity(0.3),
+                                        width: 1,
+                                      ),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: color.withOpacity(0.2),
+                                          blurRadius: 15,
+                                          offset: const Offset(0, 8),
+                                        ),
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 20,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Row(
+                                      textDirection: TextDirection.rtl,
+                                      children: [
+                                        Container(
+                                          padding: const EdgeInsets.all(14),
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors: [
+                                                color,
+                                                color.withOpacity(0.7),
+                                              ],
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              18,
+                                            ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: color.withOpacity(0.4),
+                                                blurRadius: 8,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
+                                          ),
+                                          child: Icon(
+                                            icon,
+                                            color: Colors.white,
+                                            size: 26,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 20),
+                                        Expanded(
+                                          child: Text(
+                                            fatwa["title"],
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 18,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.white,
+                                            ),
+                                            textAlign: TextAlign.right,
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.white.withOpacity(
+                                              0.2,
+                                            ),
+                                            borderRadius: BorderRadius.circular(
+                                              12,
+                                            ),
+                                          ),
+                                          child: Icon(
+                                            Icons.arrow_back_ios_rounded,
+                                            color: Colors.white.withOpacity(
+                                              0.8,
+                                            ),
+                                            size: 16,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+
+              const SizedBox(height: 20),
+            ],
+          ),
         ),
       ),
     );
