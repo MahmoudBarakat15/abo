@@ -3,27 +3,25 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:share_plus/share_plus.dart';
 
-class FatwaDetailPage extends StatefulWidget {
+class ArticleDetailPage extends StatefulWidget {
   final String title;
-  final String question;
-  final String answer;
+  final String content;
   final Color color;
   final String heroTag;
 
-  const FatwaDetailPage({
+  const ArticleDetailPage({
     super.key,
     required this.title,
-    required this.question,
-    required this.answer,
+    required this.content,
     this.color = const Color(0xFF4CAF50),
-    this.heroTag = "fatwa_default",
+    this.heroTag = "article_default",
   });
 
   @override
-  State<FatwaDetailPage> createState() => _FatwaDetailPageState();
+  State<ArticleDetailPage> createState() => _ArticleDetailPageState();
 }
 
-class _FatwaDetailPageState extends State<FatwaDetailPage>
+class _ArticleDetailPageState extends State<ArticleDetailPage>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _backgroundController;
@@ -203,7 +201,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                                   const SizedBox(width: 15),
                                   Expanded(
                                     child: Text(
-                                      "تفاصيل الفتوى",
+                                      "تفاصيل المقال",
                                       style: GoogleFonts.cairo(
                                         fontSize: 16,
                                         fontWeight: FontWeight.bold,
@@ -355,7 +353,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                         },
                       ),
 
-                      // Question Card
+                      // Content Card
                       AnimatedBuilder(
                         animation: _fadeAnimation,
                         builder: (context, child) {
@@ -363,103 +361,6 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                             offset: Offset(0, _slideAnimation.value * 0.7),
                             child: Opacity(
                               opacity: _fadeAnimation.value * 0.9,
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 25),
-                                padding: const EdgeInsets.all(25),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [
-                                      Colors.white.withOpacity(0.25),
-                                      Colors.white.withOpacity(0.12),
-                                    ],
-                                    begin: Alignment.topRight,
-                                    end: Alignment.bottomLeft,
-                                  ),
-                                  borderRadius: BorderRadius.circular(25),
-                                  border: Border.all(
-                                    color: Colors.white.withOpacity(0.3),
-                                    width: 1.5,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.1),
-                                      blurRadius: 15,
-                                      offset: const Offset(0, 8),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.end,
-                                  children: [
-                                    Row(
-                                      textDirection: TextDirection.rtl,
-                                      children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(8),
-                                          decoration: BoxDecoration(
-                                            gradient: const LinearGradient(
-                                              colors: [
-                                                Color(0xFFFF6B6B),
-                                                Color(0xFFEE5A24),
-                                              ],
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            boxShadow: [
-                                              BoxShadow(
-                                                color: Colors.red.withOpacity(
-                                                  0.3,
-                                                ),
-                                                blurRadius: 6,
-                                                offset: const Offset(0, 3),
-                                              ),
-                                            ],
-                                          ),
-                                          child: const Icon(
-                                            Icons.help_outline_rounded,
-                                            color: Colors.white,
-                                            size: 20,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Text(
-                                          "السؤال",
-                                          style: GoogleFonts.cairo(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 18),
-                                    SelectableText(
-                                      widget.question,
-                                      style: GoogleFonts.cairo(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                        height: 1.8,
-                                      ),
-                                      textAlign: TextAlign.right,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-
-                      // Answer Card
-                      AnimatedBuilder(
-                        animation: _fadeAnimation,
-                        builder: (context, child) {
-                          return Transform.translate(
-                            offset: Offset(0, _slideAnimation.value * 0.9),
-                            child: Opacity(
-                              opacity: _fadeAnimation.value * 0.8,
                               child: Container(
                                 margin: const EdgeInsets.only(bottom: 30),
                                 padding: const EdgeInsets.all(25),
@@ -514,14 +415,14 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                                             ],
                                           ),
                                           child: const Icon(
-                                            Icons.check_circle_outline_rounded,
+                                            Icons.article_rounded,
                                             color: Colors.white,
                                             size: 20,
                                           ),
                                         ),
                                         const SizedBox(width: 12),
                                         Text(
-                                          "الإجابة",
+                                          "المحتوى",
                                           style: GoogleFonts.cairo(
                                             fontSize: 16,
                                             fontWeight: FontWeight.bold,
@@ -532,7 +433,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                                     ),
                                     const SizedBox(height: 20),
                                     SelectableText(
-                                      widget.answer,
+                                      widget.content,
                                       style: GoogleFonts.cairo(
                                         fontSize: 17,
                                         fontWeight: FontWeight.w500,
@@ -583,7 +484,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                                       onTap: () {
                                         HapticFeedback.mediumImpact();
                                         Share.share(
-                                          "📖 ${widget.title}\n\n❓ السؤال:\n${widget.question}\n\n✅ الإجابة:\n${widget.answer}",
+                                          "📖 ${widget.title}\n\n${widget.content}",
                                         );
                                       },
                                     ),
@@ -601,7 +502,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                                         Clipboard.setData(
                                           ClipboardData(
                                             text:
-                                                "📖 ${widget.title}\n\n❓ السؤال:\n${widget.question}\n\n✅ الإجابة:\n${widget.answer}",
+                                                "📖 ${widget.title}\n\n${widget.content}",
                                           ),
                                         );
                                         _showCustomSnackBar();
@@ -742,7 +643,7 @@ class _FatwaDetailPageState extends State<FatwaDetailPage>
                         ),
                         const SizedBox(width: 12),
                         Text(
-                          "تم نسخ الفتوى بنجاح ✅",
+                          "تم نسخ المقال بنجاح ✅",
                           style: GoogleFonts.cairo(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,

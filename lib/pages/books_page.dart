@@ -7,6 +7,7 @@ import 'package:dio/dio.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 
 class BooksPage extends StatefulWidget {
   const BooksPage({super.key});
@@ -15,16 +16,21 @@ class BooksPage extends StatefulWidget {
   State<BooksPage> createState() => _BooksPageState();
 }
 
-class _BooksPageState extends State<BooksPage> {
-  final PageController _pageController = PageController(viewportFraction: 0.7);
+class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
+  final PageController _pageController = PageController(viewportFraction: 0.75);
   final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
       FlutterLocalNotificationsPlugin();
+
+  late AnimationController _fadeController;
+  late AnimationController _scaleController;
+  late Animation<double> _fadeAnimation;
+  late Animation<double> _scaleAnimation;
 
   final List<Map<String, String>> books = const [
     {
       "title": "1",
       "url":
-          "https://ia601209.us.archive.org/22/items/1_20250816_20250816_1903/1.pdf",
+          "https://ia801209.us.archive.org/22/items/1_20250816_20250816_1903/1.pdf",
       "cover": "assets/58.png",
     },
     {
@@ -108,7 +114,7 @@ class _BooksPageState extends State<BooksPage> {
     {
       "title": "15",
       "url":
-          "https://ia601701.us.archive.org/15/items/noor-book.com-7_202508/Noor-Book.com%20%20%D8%A8%D8%B0%D9%84%20%D8%A7%D9%84%D8%A5%D8%AD%D8%B3%D8%A7%D9%86%20%D8%A8%D8%AA%D9%82%D8%B1%D9%8A%D8%A8%20%D8%B3%D9%86%D9%86%20%D8%A7%D9%84%D9%86%D8%B3%D8%A7%D8%A6%D9%8A%20%D8%A3%D8%A8%D9%8A%20%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D8%B1%D8%AD%D9%85%D9%86%20%D9%86%D8%B3%D8%AE%D8%A9%20%D9%85%D8%B5%D9%88%D8%B1%D8%A9%207%20.pdf",
+          "https://ia601701.us.archive.org/15/items/noor-book.com-7_202508/Noor-Book.com%20%20%D8%A8%D8%B0%D9%84%20%D8%A5%D8%AD%D8%B3%D8%A7%D9%86%20%D8%A8%D8%AA%D9%82%D8%B1%D9%8A%D8%A8%20%D8%B3%D9%86%D9%86%20%D8%A7%D9%84%D9%86%D8%B3%D8%A7%D8%A6%D9%8A%20%D8%A3%D8%A8%D9%8A%20%D8%B9%D8%A8%D8%AF%D8%A7%D9%84%D8%B1%D8%AD%D9%85%D9%86%20%D9%86%D8%B3%D8%AE%D8%A9%20%D9%85%D8%B5%D9%88%D8%B1%D8%A9%207%20.pdf",
       "cover": "assets/72.png",
     },
   ];
@@ -117,6 +123,32 @@ class _BooksPageState extends State<BooksPage> {
   void initState() {
     super.initState();
     _initNotifications();
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _scaleController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _fadeController, curve: Curves.easeOutQuart),
+    );
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _scaleController, curve: Curves.elasticOut),
+    );
+
+    _fadeController.forward();
+    _scaleController.forward();
+  }
+
+  @override
+  void dispose() {
+    _fadeController.dispose();
+    _scaleController.dispose();
+    super.dispose();
   }
 
   Future<void> _initNotifications() async {
@@ -157,27 +189,17 @@ class _BooksPageState extends State<BooksPage> {
   }
 
   Future<void> _downloadBook(String url, String title) async {
-    final status = await Permission.manageExternalStorage.request();
-    if (!status.isGranted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("يجب السماح بصلاحية الوصول الكامل للملفات"),
-        ),
-      );
-      return;
-    }
-
     try {
-      final List<Directory>? dirs = await getExternalStorageDirectories(
-        type: StorageDirectory.downloads,
-      );
-      final Directory downloadsDir = dirs!.first;
-      final String filePath = "${downloadsDir.path}/$title.pdf";
-      final File file = File(filePath);
+      // ✅ لا نطلب إذن تخزين — لأننا نستخدم مجلد التطبيق الداخلي
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final safeTitle = title.replaceAll(RegExp(r'[\/:*?"<>| ]'), '_');
+      final String filePath = "${documentsDir.path}/$safeTitle.pdf";
+
+      _showElegantSnackBar("📥 بدء تحميل الكتاب...");
 
       final dio = Dio();
       await dio.download(
-        url,
+        url.trim(), // ✅ إصلاح: إزالة المسافات الزائدة من الرابط
         filePath,
         onReceiveProgress: (received, total) {
           if (total != -1) {
@@ -188,40 +210,90 @@ class _BooksPageState extends State<BooksPage> {
       );
 
       await flutterLocalNotificationsPlugin.cancel(0);
+      _showElegantSnackBar("✅ تم تحميل الكتاب بنجاح");
+    } catch (e) {
+      print("خطأ في التحميل: $e");
+      _showElegantSnackBar("❌ فشل التحميل: تحقق من الرابط أو الاتصال");
+    }
+  }
+
+  Future<void> _openBook(Map<String, String> book) async {
+    try {
+      final documentsDir = await getApplicationDocumentsDirectory();
+      final safeTitle = book["title"]!.replaceAll(RegExp(r'[\/:*?"<>| ]'), '_');
+      final localFilePath = "${documentsDir.path}/$safeTitle.pdf";
+      final file = File(localFilePath);
+
+      String? filePathToUse;
+
+      if (await file.exists()) {
+        filePathToUse = localFilePath;
+      } else {
+        filePathToUse = null; // سيُحمّل من الإنترنت عند الفتح
+      }
 
       Navigator.push(
         context,
         PageTransition(
           type: PageTransitionType.fade,
-          child: PdfViewerPage(title: title, localFilePath: filePath),
+          child: PdfViewerPage(
+            title: book["title"]!,
+            localFilePath: filePathToUse,
+            pdfUrl: filePathToUse == null ? book["url"]! : null,
+          ),
         ),
       );
     } catch (e) {
-      ScaffoldMessenger.of(
+      print("خطأ في فتح الكتاب: $e");
+      Navigator.push(
         context,
-      ).showSnackBar(SnackBar(content: Text("❌ فشل التحميل: $e")));
+        PageTransition(
+          type: PageTransitionType.fade,
+          child: PdfViewerPage(title: book["title"]!, pdfUrl: book["url"]!),
+        ),
+      );
     }
   }
 
-  Future<void> _openBook(Map<String, String> book) async {
-    final List<Directory>? dirs = await getExternalStorageDirectories(
-      type: StorageDirectory.downloads,
-    );
-    final Directory downloadsDir = dirs!.first;
-    final String filePath = "${downloadsDir.path}/${book["title"]}.pdf";
-    final File file = File(filePath);
-
-    final bool fileExists = await file.exists();
-
-    Navigator.push(
-      context,
-      PageTransition(
-        type: PageTransitionType.fade,
-        child: PdfViewerPage(
-          title: book["title"]!,
-          localFilePath: fileExists ? filePath : null,
-          pdfUrl: fileExists ? null : book["url"]!,
+  void _showElegantSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.info_outline,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  message,
+                  style: GoogleFonts.ibmPlexSansArabic(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        backgroundColor: const Color(0xFF2C1810),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(16),
+        elevation: 8,
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -229,103 +301,386 @@ class _BooksPageState extends State<BooksPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E1D2),
-      appBar: AppBar(
-        title: Text(
-          "📚 الــكــتــب",
-          style: GoogleFonts.ibmPlexSansArabic(
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Color(0xFF1A0E0A), // أسود بني داكن
+              Color(0xFF2C1810), // بني داكن
+              Color(0xFF3D2416), // بني متوسط
+              Color(0xFF4A2C1A), // بني فاتح
+            ],
+            stops: [0.0, 0.3, 0.7, 1.0],
           ),
         ),
-        centerTitle: true,
-        backgroundColor: Colors.brown.withOpacity(0.9),
-        elevation: 0,
-      ),
-      body: Center(
-        child: SizedBox(
-          height: 500,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: books.length,
-            itemBuilder: (context, index) {
-              final book = books[index];
-              return AnimatedBuilder(
-                animation: _pageController,
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Header with luxury design
+              AnimatedBuilder(
+                animation: _fadeAnimation,
                 builder: (context, child) {
-                  double value = 1.0;
-                  if (_pageController.hasClients &&
-                      _pageController.position.haveDimensions) {
-                    value = (_pageController.page! - index).abs();
-                  }
-
-                  final isFocused = value < 0.3;
-                  final scale = isFocused ? 1.05 : 0.9;
-
-                  return Column(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () {
-                            _openBook(book);
-                          },
-                          child: Transform.scale(
-                            scale: scale,
-                            child: Container(
-                              margin: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 16,
-                              ),
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                border: isFocused
-                                    ? Border.all(
-                                        color: const Color(0xFFFFD700),
-                                        width: 2,
-                                      )
-                                    : null,
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(20),
-                                child: Image.asset(
-                                  book["cover"]!,
-                                  fit: BoxFit.cover,
-                                ),
-                              ),
+                  return Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: Container(
+                      margin: const EdgeInsets.all(20),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 24,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [
+                            Color(0xFFFFD700), // ذهبي
+                            Color(0xFFFFA500), // برتقالي ذهبي
+                            Color(0xFFFFD700), // ذهبي
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(30),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(0xFFFFD700).withOpacity(0.3),
+                            blurRadius: 20,
+                            spreadRadius: 2,
+                            offset: const Offset(0, 8),
+                          ),
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.3),
+                            blurRadius: 15,
+                            spreadRadius: 1,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              borderRadius: BorderRadius.circular(15),
+                            ),
+                            child: const Icon(
+                              Icons.menu_book_rounded,
+                              color: Color(0xFF2C1810),
+                              size: 28,
                             ),
                           ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            _downloadBook(book["url"]!, book["title"]!);
-                          },
-                          icon: const Icon(Icons.download),
-                          label: const Text("تنزيل الكتاب"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.brown[700],
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 10,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            textStyle: GoogleFonts.ibmPlexSansArabic(
-                              fontSize: 16,
+                          const SizedBox(width: 16),
+                          Text(
+                            "الكتب",
+                            style: GoogleFonts.ibmPlexSansArabic(
+                              fontSize: 24,
                               fontWeight: FontWeight.bold,
+                              color: const Color(0xFF2C1810),
+                              letterSpacing: 2,
+                              shadows: [
+                                Shadow(
+                                  color: Colors.white.withOpacity(0.5),
+                                  offset: const Offset(1, 1),
+                                  blurRadius: 2,
+                                ),
+                              ],
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
+                    ),
                   );
                 },
-              );
-            },
+              ),
+
+              // Books carousel
+              Expanded(
+                child: AnimatedBuilder(
+                  animation: _scaleAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _scaleAnimation.value,
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 10),
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: books.length,
+                          itemBuilder: (context, index) {
+                            final book = books[index];
+                            return AnimatedBuilder(
+                              animation: _pageController,
+                              builder: (context, child) {
+                                double value = 1.0;
+                                if (_pageController.hasClients &&
+                                    _pageController.position.haveDimensions) {
+                                  value = (_pageController.page! - index).abs();
+                                }
+
+                                final isFocused = value < 0.3;
+                                final scale = isFocused ? 1.0 : 0.85;
+                                final opacity = isFocused ? 1.0 : 0.6;
+
+                                return Transform.scale(
+                                  scale: scale,
+                                  child: Opacity(
+                                    opacity: opacity,
+                                    child: Container(
+                                      margin: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 20,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(25),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(
+                                              0.3,
+                                            ),
+                                            blurRadius: 15,
+                                            spreadRadius: 2,
+                                            offset: const Offset(0, 6),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          // Book cover container
+                                          Expanded(
+                                            flex: 4,
+                                            child: GestureDetector(
+                                              onTap: () => _openBook(book),
+                                              child: Container(
+                                                decoration: BoxDecoration(
+                                                  borderRadius:
+                                                      const BorderRadius.only(
+                                                        topLeft:
+                                                            Radius.circular(25),
+                                                        topRight:
+                                                            Radius.circular(25),
+                                                      ),
+                                                  border: isFocused
+                                                      ? Border.all(
+                                                          color: const Color(
+                                                            0xFFFFD700,
+                                                          ),
+                                                          width: 2,
+                                                        )
+                                                      : null,
+                                                ),
+                                                child: ClipRRect(
+                                                  borderRadius:
+                                                      const BorderRadius.only(
+                                                        topLeft:
+                                                            Radius.circular(22),
+                                                        topRight:
+                                                            Radius.circular(22),
+                                                      ),
+                                                  child: Stack(
+                                                    children: [
+                                                      // Book cover image
+                                                      Positioned.fill(
+                                                        child: Image.asset(
+                                                          book["cover"]!,
+                                                          fit: BoxFit.cover,
+                                                        ),
+                                                      ),
+                                                      // Glossy overlay
+                                                      if (isFocused)
+                                                        Positioned.fill(
+                                                          child: Container(
+                                                            decoration: BoxDecoration(
+                                                              gradient: LinearGradient(
+                                                                begin: Alignment
+                                                                    .topLeft,
+                                                                end: Alignment
+                                                                    .center,
+                                                                colors: [
+                                                                  Colors.white
+                                                                      .withOpacity(
+                                                                        0.2,
+                                                                      ),
+                                                                  Colors
+                                                                      .transparent,
+                                                                ],
+                                                              ),
+                                                            ),
+                                                          ),
+                                                        ),
+                                                      // Floating icon
+                                                      if (isFocused)
+                                                        Positioned(
+                                                          top: 15,
+                                                          right: 15,
+                                                          child: Container(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  8,
+                                                                ),
+                                                            decoration: BoxDecoration(
+                                                              color:
+                                                                  const Color(
+                                                                    0xFFFFD700,
+                                                                  ),
+                                                              borderRadius:
+                                                                  BorderRadius.circular(
+                                                                    12,
+                                                                  ),
+                                                              boxShadow: [
+                                                                BoxShadow(
+                                                                  color: Colors
+                                                                      .black
+                                                                      .withOpacity(
+                                                                        0.3,
+                                                                      ),
+                                                                  blurRadius: 8,
+                                                                  offset:
+                                                                      const Offset(
+                                                                        0,
+                                                                        4,
+                                                                      ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            child: const Icon(
+                                                              Icons
+                                                                  .auto_stories,
+                                                              color: Color(
+                                                                0xFF2C1810,
+                                                              ),
+                                                              size: 20,
+                                                            ),
+                                                          ),
+                                                        ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Download button container
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  const Color(0xFF2C1810),
+                                                  const Color(0xFF1A0E0A),
+                                                ],
+                                                begin: Alignment.topCenter,
+                                                end: Alignment.bottomCenter,
+                                              ),
+                                              borderRadius:
+                                                  const BorderRadius.only(
+                                                    bottomLeft: Radius.circular(
+                                                      25,
+                                                    ),
+                                                    bottomRight:
+                                                        Radius.circular(25),
+                                                  ),
+                                            ),
+                                            child: SizedBox(
+                                              width: double.infinity,
+                                              child: ElevatedButton(
+                                                onPressed: () => _downloadBook(
+                                                  book["url"]!,
+                                                  book["title"]!,
+                                                ),
+                                                style: ElevatedButton.styleFrom(
+                                                  backgroundColor: const Color(
+                                                    0xFFFFD700,
+                                                  ),
+                                                  foregroundColor: const Color(
+                                                    0xFF2C1810,
+                                                  ),
+                                                  elevation: 4,
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 12,
+                                                      ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          15,
+                                                        ),
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  mainAxisAlignment:
+                                                      MainAxisAlignment.center,
+                                                  children: [
+                                                    const Icon(
+                                                      Icons.download_rounded,
+                                                      color: Color(0xFF2C1810),
+                                                      size: 20,
+                                                    ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      "تنزيل",
+                                                      style:
+                                                          GoogleFonts.ibmPlexSansArabic(
+                                                            fontSize: 14,
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color: const Color(
+                                                              0xFF2C1810,
+                                                            ),
+                                                          ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              // Bottom page indicator dots
+              AnimatedBuilder(
+                animation: _fadeAnimation,
+                builder: (context, child) {
+                  return Opacity(
+                    opacity: _fadeAnimation.value,
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 10,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: List.generate(
+                          (books.length / 5).ceil(),
+                          (index) => Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 4),
+                            width: 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFD700).withOpacity(0.6),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ],
           ),
         ),
       ),
@@ -364,14 +719,21 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   }
 
   Future<void> _loadPdfFromFile(String path) async {
-    pdfController = PdfControllerPinch(document: PdfDocument.openFile(path));
-    setState(() => isLoading = false);
+    try {
+      pdfController = PdfControllerPinch(document: PdfDocument.openFile(path));
+      setState(() => isLoading = false);
+    } catch (e) {
+      print("❌ فشل فتح الملف المحلي: $e");
+      if (widget.pdfUrl != null) {
+        _loadPdfFromUrl(widget.pdfUrl!);
+      }
+    }
   }
 
   Future<void> _loadPdfFromUrl(String url) async {
     try {
       final response = await Dio().get(
-        url,
+        url.trim(), // ✅ إصلاح الرابط
         options: Options(responseType: ResponseType.bytes),
       );
       pdfController = PdfControllerPinch(
@@ -380,7 +742,18 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
       setState(() => isLoading = false);
     } catch (e) {
       print("❌ خطأ في تحميل الملف من الإنترنت: $e");
+      _showSnackBar("فشل تحميل الكتاب، تأكد من الاتصال بالإنترنت");
     }
+  }
+
+  void _showSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        duration: const Duration(seconds: 3),
+      ),
+    );
   }
 
   @override
@@ -392,17 +765,122 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4E1D2),
-      appBar: AppBar(
-        title: Text(
-          widget.title,
-          style: GoogleFonts.ibmPlexSansArabic(fontWeight: FontWeight.bold),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A0E0A), Color(0xFF2C1810)],
+          ),
         ),
-        backgroundColor: Colors.brown[700],
+        child: SafeArea(
+          child: Column(
+            children: [
+              // Luxury AppBar
+              Container(
+                margin: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                  ),
+                  borderRadius: BorderRadius.circular(25),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFD700).withOpacity(0.3),
+                      blurRadius: 15,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 5),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: () => Navigator.pop(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Color(0xFF2C1810),
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        widget.title,
+                        style: GoogleFonts.ibmPlexSansArabic(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF2C1810),
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    const SizedBox(width: 40), // Balance the back button
+                  ],
+                ),
+              ),
+
+              // PDF Viewer
+              Expanded(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.3),
+                        blurRadius: 15,
+                        spreadRadius: 2,
+                        offset: const Offset(0, 5),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      color: Colors.white,
+                      child: isLoading
+                          ? Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const CircularProgressIndicator(
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Color(0xFFFFD700),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Text(
+                                    'جاري تحميل الكتاب...',
+                                    style: GoogleFonts.ibmPlexSansArabic(
+                                      fontSize: 16,
+                                      color: const Color(0xFF2C1810),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : PdfViewPinch(controller: pdfController),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : PdfViewPinch(controller: pdfController),
     );
   }
 }

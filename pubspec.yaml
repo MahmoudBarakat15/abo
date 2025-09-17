@@ -53,6 +53,9 @@ dependencies:
   connectivity_plus: ^6.0.5
   flutter_animate: ^4.5.0
 
+  # 🆕 أضفنا هذه الحزمة لحل الخطأ الذي واجهته
+  device_info_plus: ^9.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -119,6 +122,7 @@ flutter:
     - assets/audio/welcome.mp3
     - assets/audio_cover.jpg
     - assets/data/fatawa.json
+    - assets/data/articles.json
 
   fonts:
     - family: IBM Plex Arabic

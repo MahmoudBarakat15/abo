@@ -163,7 +163,7 @@ class _FatawaPageState extends State<FatawaPage> with TickerProviderStateMixin {
                               child: const Icon(
                                 Icons.menu_book_rounded,
                                 color: Colors.white,
-                                size: 28,
+                                size: 15,
                               ),
                             ),
                             const SizedBox(width: 20),
@@ -202,7 +202,7 @@ class _FatawaPageState extends State<FatawaPage> with TickerProviderStateMixin {
                                 child: const Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   color: Colors.white,
-                                  size: 22,
+                                  size: 15,
                                 ),
                               ),
                             ),
@@ -315,7 +315,7 @@ class _FatawaPageState extends State<FatawaPage> with TickerProviderStateMixin {
                                           child: Icon(
                                             icon,
                                             color: Colors.white,
-                                            size: 26,
+                                            size: 20,
                                           ),
                                         ),
                                         const SizedBox(width: 20),
@@ -323,7 +323,7 @@ class _FatawaPageState extends State<FatawaPage> with TickerProviderStateMixin {
                                           child: Text(
                                             fatwa["title"],
                                             style: GoogleFonts.cairo(
-                                              fontSize: 18,
+                                              fontSize: 13,
                                               fontWeight: FontWeight.bold,
                                               color: Colors.white,
                                             ),

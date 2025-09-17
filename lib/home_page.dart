@@ -8,10 +8,10 @@ import 'pages/audio_page.dart';
 import 'pages/books_page.dart';
 import 'pages/reels_page.dart';
 import 'pages/video_view.dart';
-import 'pages/articles_page.dart';
-import 'pages/fatawa_page.dart';
 import 'pages/social_media_page.dart';
 import 'pages/quran_page.dart';
+import 'pages/articles_page.dart';
+import 'pages/fatawa_page.dart';
 
 // تعريف الألوان والثيمات
 class AppTheme {

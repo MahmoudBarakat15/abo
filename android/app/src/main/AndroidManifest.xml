@@ -7,13 +7,7 @@
     <!-- ✅ صلاحيات الشبكة -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
-    <!-- ✅ صلاحيات التخزين لأندرويد 10 وأقل -->
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
-        android:maxSdkVersion="28" />
-
-    <!-- ✅ صلاحيات وسائط لأندرويد 13+ -->
+    <!-- ✅ صلاحيات وسائط لأندرويد 13+ (مفيدة إذا كنت تعرض/تفتح ملفات من معرض الهاتف) -->
     <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
     <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -24,8 +18,7 @@
     <application
         android:name="${applicationName}"
         android:label="sheikh_huwayni"
-        android:icon="@mipmap/ic_launcher"
-        android:requestLegacyExternalStorage="true">
+        android:icon="@mipmap/ic_launcher">
 
         <activity
             android:name=".MainActivity"
@@ -37,24 +30,21 @@
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- ✅ ثيم افتراضي -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
-            <!-- ✅ نقطة دخول التطبيق -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
-        <!-- ✅ ضروري لتشغيل Flutter -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
 
-        <!-- ✅ FileProvider لفتح الملفات بأمان -->
+        <!-- ✅ FileProvider ضروري لمشاركة الملفات أو فتحها بتطبيقات خارجية -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -66,7 +56,7 @@
         </provider>
     </application>
 
-    <!-- ✅ السماح بالتفاعل مع تطبيقات أخرى (مثلاً مشاركة نصوص) -->
+    <!-- ✅ السماح بالتفاعل مع تطبيقات أخرى -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
