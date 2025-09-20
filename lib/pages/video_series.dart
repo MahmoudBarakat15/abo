@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:dio/dio.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
@@ -10,6 +9,10 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'dart:math' as math;
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http/http.dart' as http;
 
 class VideoSeriesPage extends StatefulWidget {
   const VideoSeriesPage({super.key});
@@ -32,15 +35,11 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
   bool _isSearching = false;
 
   // Network & Notifications
-  final Dio _dio = Dio();
   final FlutterLocalNotificationsPlugin _notificationsPlugin =
       FlutterLocalNotificationsPlugin();
 
-  // Download Management
-  bool isDownloading = false;
-  double downloadProgress = 0.0;
-  String? currentDownloadingTitle;
-  String? lastDownloadedFilePath;
+  // Download Management (مبسط مثل ReelsPage)
+  // تم إزالة متغيرات التحميل المعقدة
 
   // UI Controllers
   final ScrollController _scrollController = ScrollController();
@@ -59,8 +58,11 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
 
   // Video Player
   VideoItem? _playingVideo;
-  late VideoPlayerController _videoController;
+  VideoPlayerController? _videoController;
   ChewieController? _chewieController;
+
+  // Local Files Management (like ReelsPage)
+  List<String?> _localFiles = [];
 
   @override
   void initState() {
@@ -71,6 +73,81 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     _loadVideos();
     _startFeaturedAutoScroll();
     _searchController.addListener(_onSearchChanged);
+    _requestPermissions();
+  }
+
+  // ✅ إضافة طلب الصلاحيات (مثل ReelsPage)
+  Future<void> _requestPermissions() async {
+    if (Platform.isAndroid) {
+      if (await Permission.videos.isDenied) {
+        await Permission.videos.request();
+      }
+      if (await Permission.audio.isDenied) {
+        await Permission.audio.request();
+      }
+      if (await Permission.storage.isDenied) {
+        await Permission.storage.request();
+      }
+      if (await Permission.notification.isDenied) {
+        await Permission.notification.request();
+      }
+    }
+  }
+
+  // ✅ إضافة دالة الحصول على مجلد التنزيلات (مثل ReelsPage)
+  Future<Directory> _getDownloadDirectory() async {
+    Directory? directory;
+    if (Platform.isAndroid) {
+      directory = Directory('/storage/emulated/0/Download/SheikhHuwayni');
+      if (!(await directory.exists())) {
+        try {
+          await directory.create(recursive: true);
+        } catch (e) {
+          final appDir = await getExternalStorageDirectory();
+          directory = Directory('${appDir?.path}/SheikhHuwayni');
+          await directory.create(recursive: true);
+        }
+      }
+    } else {
+      final appDir = await getApplicationDocumentsDirectory();
+      directory = Directory('${appDir.path}/SheikhHuwayni');
+      await directory.create(recursive: true);
+    }
+    return directory;
+  }
+
+  // ✅ إضافة دوال حفظ وتحميل مسارات الملفات المحلية (مثل ReelsPage)
+  Future<void> _saveLocalFilePaths() async {
+    final prefs = await SharedPreferences.getInstance();
+    final Map<String, String> fileMap = {};
+    for (int i = 0; i < _localFiles.length; i++) {
+      if (_localFiles[i] != null && videos.length > i) {
+        fileMap[videos[i].url] = _localFiles[i]!;
+      }
+    }
+    await prefs.setString('local_video_series_files', jsonEncode(fileMap));
+  }
+
+  Future<void> _loadLocalFilePaths() async {
+    final prefs = await SharedPreferences.getInstance();
+    final String? savedFiles = prefs.getString('local_video_series_files');
+    if (savedFiles != null) {
+      final Map<String, dynamic> fileMap = jsonDecode(savedFiles);
+      for (int i = 0; i < videos.length; i++) {
+        if (fileMap.containsKey(videos[i].url)) {
+          final filePath = fileMap[videos[i].url] as String;
+          if (await File(filePath).exists()) {
+            _localFiles[i] = filePath;
+          }
+        }
+      }
+    }
+  }
+
+  // ✅ التحقق من تحميل الفيديو (مثل ReelsPage)
+  bool _isVideoDownloaded(int index) {
+    if (index >= _localFiles.length || _localFiles[index] == null) return false;
+    return File(_localFiles[index]!).existsSync();
   }
 
   void _initializeAnimations() {
@@ -144,8 +221,16 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     });
   }
 
+  // ✅ إصلاح دالة البحث - إيقاف الفيديو عند البحث
   void _onSearchChanged() {
     final query = _searchController.text.toLowerCase().trim();
+    // ✅ إيقاف الفيديو المُشغل عند البحث
+    if (_playingVideo != null) {
+      setState(() {
+        _playingVideo = null;
+      });
+      _disposePlayer();
+    }
     setState(() {
       _searchQuery = query;
       if (query.isEmpty) {
@@ -179,7 +264,11 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
   void _disposePlayer() {
     if (_chewieController != null) {
       _chewieController!.dispose();
-      _videoController.dispose();
+      _chewieController = null;
+    }
+    if (_videoController != null) {
+      _videoController!.dispose();
+      _videoController = null;
     }
   }
 
@@ -197,21 +286,26 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
 
   Future<void> _loadVideos() async {
     try {
-      _dio.options.connectTimeout = const Duration(seconds: 15);
-      _dio.options.receiveTimeout = const Duration(seconds: 15);
-      final response = await _dio.get(
-        'https://gist.githubusercontent.com/MahmoudBarakat15/3b6ae308804de1e552bedfa7ae9699fd/raw/gistfile1.txt',
+      final response = await http.get(
+        Uri.parse(
+          'https://gist.githubusercontent.com/MahmoudBarakat15/3b6ae308804de1e552bedfa7ae9699fd/raw/gistfile1.txt',
+        ),
       );
       if (response.statusCode == 200) {
-        dynamic responseData = response.data;
-        if (responseData is String) responseData = jsonDecode(responseData);
+        // ✅ هذا السطر صحيح تماماً ولا يحتوي على خطأ
+        final dynamic responseData = jsonDecode(response.body);
         final List<dynamic> videoList = responseData['videos'] ?? [];
         setState(() {
           videos = videoList.map((json) => VideoItem.fromJson(json)).toList();
           filteredVideos = List.from(videos);
+          _localFiles = List.filled(
+            videos.length,
+            null,
+          ); // ✅ تهيئة قائمة الملفات المحلية
           isLoading = false;
           hasError = false;
         });
+        await _loadLocalFilePaths();
         _mainAnimationController.forward();
       } else {
         throw Exception('Failed to load: ${response.statusCode}');
@@ -224,77 +318,99 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     }
   }
 
-  // ✅ تم تعديل هذه الدالة فقط: لا تُحمّل، فقط تُظهر رسالة
+  // ✅ تحميل الفيديو (نفس طريقة ReelsPage بالضبط)
   Future<void> _downloadVideo(VideoItem video) async {
-    // إظهار رسالة فقط
+    if (!mounted) return;
+    // العثور على فهرس الفيديو
+    final videoIndex = videos.indexWhere((v) => v.url == video.url);
+    if (videoIndex == -1) return;
+    // التحقق من الصلاحيات أولاً
+    if (Platform.isAndroid) {
+      if (await Permission.videos.isDenied &&
+          await Permission.storage.isDenied) {
+        await _requestPermissions();
+        // إعادة التحقق
+        if (await Permission.videos.isDenied &&
+            await Permission.storage.isDenied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("❌ يجب السماح بصلاحيات التخزين لتحميل الفيديو"),
+            ),
+          );
+          return;
+        }
+      }
+    }
+    // إظهار مؤشر تحميل
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'قريبا إن شاء الله',
-          style: GoogleFonts.cairo(color: Colors.white),
-          textAlign: TextAlign.center,
-        ),
-        backgroundColor: const Color(0xFF6366F1),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        margin: const EdgeInsets.all(16),
-        duration: const Duration(seconds: 3),
+      const SnackBar(
+        content: Text("⏳ جارٍ تحميل المقطع إلى مجلد التنزيلات..."),
+        duration: Duration(seconds: 3),
       ),
     );
-
-    // ✅ تم تعطيل عملية التحميل مؤقتًا
-    // لن يتم تنفيذ أي شيء من الكود الأصلي للتحميل
+    try {
+      final url = video.url;
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode != 200) {
+        throw Exception('فشل في تحميل الفيديو: ${response.statusCode}');
+      }
+      // الحصول على مجلد التنزيلات
+      final downloadDir = await _getDownloadDirectory();
+      // إنشاء اسم الملف
+      String videoTitle = video.title.isEmpty ? 'مقطع بدون عنوان' : video.title;
+      // تنظيف العنوان من الرموز غير المسموحة
+      videoTitle = videoTitle.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_');
+      videoTitle = videoTitle.replaceAll('🎥', '').trim();
+      if (videoTitle.isEmpty) videoTitle = 'video';
+      final fileName =
+          "${videoTitle}_${DateTime.now().millisecondsSinceEpoch}.mp4";
+      final file = File('${downloadDir.path}/$fileName');
+      // كتابة الملف
+      await file.writeAsBytes(response.bodyBytes);
+      if (!mounted) return;
+      setState(() {
+        _localFiles[videoIndex] = file.path;
+      });
+      // حفظ مسار الملف
+      await _saveLocalFilePaths();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("✅ تم حفظ المقطع بنجاح"),
+              Text(
+                "📁 المسار: ${file.path}",
+                style: const TextStyle(fontSize: 12, color: Colors.white70),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    } catch (e) {
+      debugPrint("خطأ في تحميل الفيديو: $e");
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("❌ فشل التحميل: $e")));
+    }
   }
 
   void _showSuccessSnackBar(String filePath) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Container(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'تم التحميل بنجاح',
-                      style: GoogleFonts.cairo(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    Text(
-                      'تم حفظ الملف في التنزيلات',
-                      style: GoogleFonts.cairo(
-                        fontSize: 12,
-                        color: Colors.white70,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-        action: SnackBarAction(
-          label: 'فتح',
-          textColor: Colors.white,
-          onPressed: () => _openDownloadedFileSafe(lastDownloadedFilePath!),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("✅ تم حفظ المقطع بنجاح"),
+            Text(
+              "📁 المسار: $filePath",
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ],
         ),
         backgroundColor: const Color(0xFF00C853),
         behavior: SnackBarBehavior.floating,
@@ -308,18 +424,7 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Row(
-          children: [
-            const Icon(Icons.error_outline, color: Colors.white),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                message,
-                style: GoogleFonts.cairo(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
+        content: Text("❌ $message"),
         backgroundColor: const Color(0xFFE53935),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -345,47 +450,34 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     );
   }
 
-  Future<void> _openDownloadedFileSafe(String filePath) async {
-    try {
-      final file = File(filePath);
-      if (!file.existsSync()) {
-        _showErrorSnackBar('الملف غير موجود');
-        return;
-      }
-
-      final fileName = filePath.split('/').last;
-      final uri = Uri.parse(
-        'content://com.example.sheikh_huwayni.fileprovider/my_files/$fileName',
-      );
-
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      } else {
-        _showErrorSnackBar('لا يمكن فتح الفيديو - تأكد من وجود مشغل فيديو');
-      }
-    } catch (e) {
-      _showErrorSnackBar('تعذر فتح الملف: $e');
-    }
-  }
-
+  // ✅ إزالة _openDownloadedFileSafe - غير مطلوبة مثل ReelsPage
   void _playVideo(VideoItem video) async {
     if (_playingVideo == video) {
       setState(() {
         _playingVideo = null;
       });
+      _disposePlayer();
       return;
     }
-
     setState(() {
       _playingVideo = video;
     });
-
     _disposePlayer();
-
-    _videoController = VideoPlayerController.network(video.url);
-    await _videoController.initialize();
+    // ✅ التحقق من وجود ملف محلي أولاً
+    final videoIndex = videos.indexWhere((v) => v.url == video.url);
+    String videoUrl = video.url;
+    if (videoIndex != -1 && _isVideoDownloaded(videoIndex)) {
+      // استخدام الملف المحلي
+      _videoController = VideoPlayerController.file(
+        File(_localFiles[videoIndex]!),
+      );
+    } else {
+      // استخدام الرابط من الإنترنت
+      _videoController = VideoPlayerController.networkUrl(Uri.parse(video.url));
+    }
+    await _videoController!.initialize();
     _chewieController = ChewieController(
-      videoPlayerController: _videoController,
+      videoPlayerController: _videoController!,
       autoPlay: true,
       looping: false,
       allowFullScreen: false,
@@ -420,10 +512,10 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
         ),
       ),
     );
-
     setState(() {});
   }
 
+  // ✅ إصلاح دالة إيقاف البحث
   void _toggleSearch() {
     setState(() {
       if (_isSearching) {
@@ -431,6 +523,11 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
         _isSearching = false;
         filteredVideos = List.from(videos);
         _searchAnimationController.reverse();
+        // ✅ إيقاف الفيديو عند إغلاق البحث أيضاً
+        if (_playingVideo != null) {
+          _playingVideo = null;
+          _disposePlayer();
+        }
       } else {
         _isSearching = true;
         _searchAnimationController.forward();
@@ -443,14 +540,12 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     return WillPopScope(
       onWillPop: () async {
         if (_playingVideo != null) {
-          // إذا كان الفيديو يُعرض، أوقفه ولا تُغلق الصفحة
           setState(() {
             _playingVideo = null;
           });
           _disposePlayer();
-          return false; // لا تُغلق الصفحة
+          return false;
         }
-        // إذا لم يكن الفيديو يُعرض، ارجع للصفحة السابقة
         return true;
       },
       child: Scaffold(
@@ -461,7 +556,6 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
           children: [
             if (_playingVideo == null) ...[
               _buildBody(),
-              _buildDownloadOverlay(),
             ] else ...[
               _buildInPagePlayer(),
             ],
@@ -523,14 +617,12 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
           ),
           onPressed: () {
             if (_playingVideo != null) {
-              // فقط أوقف الفيديو، لا تغلق الصفحة
               setState(() {
                 _playingVideo = null;
               });
               _disposePlayer();
             } else {
-              // ارجع للصفحة السابقة
-              Navigator.maybePop(context); // ⬅️ استخدام maybePop آمن
+              Navigator.maybePop(context);
             }
           },
         ),
@@ -801,13 +893,27 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
                               color: Colors.white.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(20),
                             ),
-                            child: Text(
-                              'مميز',
-                              style: GoogleFonts.cairo(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  'مميز',
+                                  style: GoogleFonts.cairo(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                // ✅ إضافة مؤشر للفيديوهات المحملة
+                                if (_isVideoDownloaded(index)) ...[
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.download_done,
+                                    color: Colors.green,
+                                    size: 14,
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           const SizedBox(height: 12),
@@ -876,14 +982,20 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
                               const SizedBox(width: 12),
                               Container(
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
+                                  color: _isVideoDownloaded(index)
+                                      ? Colors.green.withOpacity(0.3)
+                                      : Colors.white.withOpacity(0.2),
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 child: IconButton(
                                   onPressed: () => _downloadVideo(video),
-                                  icon: const Icon(
-                                    Icons.download_rounded,
-                                    color: Colors.white,
+                                  icon: Icon(
+                                    _isVideoDownloaded(index)
+                                        ? Icons.download_done_rounded
+                                        : Icons.download_rounded,
+                                    color: _isVideoDownloaded(index)
+                                        ? Colors.green
+                                        : Colors.white,
                                     size: 20,
                                   ),
                                 ),
@@ -977,6 +1089,7 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
       sliver: SliverGrid(
         delegate: SliverChildBuilderDelegate((context, index) {
           final video = filteredVideos[index];
+          final videoIndex = videos.indexWhere((v) => v.url == video.url);
           return AnimatedBuilder(
             animation: _mainAnimationController,
             builder: (context, child) {
@@ -984,7 +1097,7 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
                 opacity: _fadeAnimation,
                 child: Transform.translate(
                   offset: Offset(0, 30 * (1 - _fadeAnimation.value)),
-                  child: _buildVideoCard(video, index),
+                  child: _buildVideoCard(video, videoIndex),
                 ),
               );
             },
@@ -1147,12 +1260,22 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
                             Positioned(
                               bottom: 8,
                               left: 8,
-                              child: IconButton(
-                                onPressed: () => _downloadVideo(video),
-                                icon: const Icon(
-                                  Icons.download_rounded,
-                                  color: Colors.white,
-                                  size: 20,
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  color: _isVideoDownloaded(index)
+                                      ? Colors.green.withOpacity(0.8)
+                                      : Colors.black.withOpacity(0.6),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: IconButton(
+                                  onPressed: () => _downloadVideo(video),
+                                  icon: Icon(
+                                    _isVideoDownloaded(index)
+                                        ? Icons.download_done_rounded
+                                        : Icons.download_rounded,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
                                 ),
                               ),
                             ),
@@ -1181,6 +1304,41 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
                                 ),
                               ),
                             ),
+                            // ✅ مؤشر الحالة (محلي/إنترنت)
+                            if (_isVideoDownloaded(index))
+                              Positioned(
+                                top: 12,
+                                left: 12,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.green.withOpacity(0.8),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(
+                                        Icons.offline_pin,
+                                        color: Colors.white,
+                                        size: 10,
+                                      ),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        'محلي',
+                                        style: GoogleFonts.cairo(
+                                          color: Colors.white,
+                                          fontSize: 8,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1213,6 +1371,8 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
   }
 
   Widget _buildInPagePlayer() {
+    final videoIndex = videos.indexWhere((v) => v.url == _playingVideo!.url);
+    final isLocalFile = videoIndex != -1 && _isVideoDownloaded(videoIndex);
     return Container(
       color: Colors.black,
       child: SafeArea(
@@ -1244,15 +1404,53 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    _playingVideo!.title,
-                    style: GoogleFonts.cairo(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _playingVideo!.title,
+                          style: GoogleFonts.cairo(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      // ✅ مؤشر نوع التشغيل
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isLocalFile
+                              ? Colors.green.withOpacity(0.2)
+                              : Colors.blue.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isLocalFile ? Icons.offline_pin : Icons.wifi,
+                              color: isLocalFile ? Colors.green : Colors.blue,
+                              size: 14,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              isLocalFile ? 'محلي' : 'مباشر',
+                              style: GoogleFonts.cairo(
+                                color: isLocalFile ? Colors.green : Colors.blue,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   if (_playingVideo!.description.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -1275,138 +1473,7 @@ class _VideoSeriesPageState extends State<VideoSeriesPage>
     );
   }
 
-  Widget _buildDownloadOverlay() {
-    if (!isDownloading && lastDownloadedFilePath == null) {
-      return const SizedBox.shrink();
-    }
-    final bool done = !isDownloading && lastDownloadedFilePath != null;
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
-      child: SafeArea(
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 500),
-          curve: Curves.easeInOut,
-          height: done ? 80 : 90,
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: done
-                  ? [const Color(0xFF00C853), const Color(0xFF4CAF50)]
-                  : [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color:
-                    (done ? const Color(0xFF00C853) : const Color(0xFF6366F1))
-                        .withOpacity(0.3),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: done
-                      ? () => _openDownloadedFileSafe(lastDownloadedFilePath!)
-                      : null,
-                  borderRadius: BorderRadius.circular(20),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                done
-                                    ? Icons.check_circle_rounded
-                                    : Icons.cloud_download_rounded,
-                                color: Colors.white,
-                                size: 20,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    done
-                                        ? 'اكتمل التحميل بنجاح'
-                                        : 'جارٍ التحميل...',
-                                    style: GoogleFonts.cairo(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  if (currentDownloadingTitle != null)
-                                    Text(
-                                      currentDownloadingTitle!,
-                                      style: GoogleFonts.cairo(
-                                        color: Colors.white.withOpacity(0.8),
-                                        fontSize: 12,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                      maxLines: 1,
-                                    ),
-                                ],
-                              ),
-                            ),
-                            if (done)
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(16),
-                                ),
-                                child: Text(
-                                  'اضغط للفتح',
-                                  style: GoogleFonts.cairo(
-                                    color: Colors.white,
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        LinearProgressIndicator(
-                          value: done ? 1.0 : downloadProgress.clamp(0.0, 1.0),
-                          backgroundColor: Colors.white.withOpacity(0.3),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withOpacity(0.9),
-                          ),
-                          minHeight: 6,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  // ✅ إزالة _buildDownloadOverlay - غير مطلوب مثل ReelsPage
 
   Widget _buildLoadingState() {
     return Container(

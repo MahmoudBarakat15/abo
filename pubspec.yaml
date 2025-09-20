@@ -56,6 +56,10 @@ dependencies:
   # 🆕 أضفنا هذه الحزمة لحل الخطأ الذي واجهته
   device_info_plus: ^9.0.0
 
+  # 🆕 قواعد بيانات (لتحميل JSON في SQLite)
+  sqflite: ^2.3.0
+  path: ^1.8.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -123,6 +127,7 @@ flutter:
     - assets/audio_cover.jpg
     - assets/data/fatawa.json
     - assets/data/articles.json
+    - assets/data/transcriptions.json
 
   fonts:
     - family: IBM Plex Arabic

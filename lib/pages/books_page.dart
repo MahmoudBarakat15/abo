@@ -28,10 +28,16 @@ class _BooksPageState extends State<BooksPage> with TickerProviderStateMixin {
 
   final List<Map<String, String>> books = const [
     {
-      "title": "1",
+      "title": "0",
       "url":
           "https://ia801209.us.archive.org/22/items/1_20250816_20250816_1903/1.pdf",
       "cover": "assets/58.png",
+    },
+    {
+      "title": "1",
+      "url":
+          "https://ia801209.us.archive.org/22/items/1_20250816_20250816_1903/1.pdf",
+      "cover": "assets/301.png",
     },
     {
       "title": "2",
